@@ -18,13 +18,14 @@ test('DPNF_ERROR_REGISTRY contains all 13 canonical DPNF_ERROR_* codes', () => {
   assert.ok(names.includes('DPNF_ERROR_TRAINING_FAILED'));
 });
 
-test('DPNF_MODULES strictly separates Implemented Phase 0 modules from Planned Phases 1-11', () => {
+test('DPNF_MODULES lists all 11 implemented C++20 and Vulkan 1.3 subsystems using .h and .cpp files', () => {
   const implemented = DPNF_MODULES.filter((m) => m.status === 'Implemented');
-  const planned = DPNF_MODULES.filter((m) => m.status === 'Planned');
-  assert.equal(implemented.length, 5);
-  assert.ok(implemented.every((m) => m.phase === 0));
-  assert.ok(planned.length >= 7);
-  assert.ok(planned.every((m) => m.phase >= 1));
+  assert.equal(implemented.length, 11);
+  for (const mod of implemented) {
+    for (const h of mod.publicHeaders) {
+      assert.ok(h.endsWith('.h'), `Expected header ${h} to end with .h`);
+    }
+  }
 });
 
 test('validateSandboxRunOptions validates thread count, log level, and error codes', () => {
@@ -79,8 +80,8 @@ test('buildSandboxCliArgs constructs deterministic CLI arguments for dpnf_sandbo
 });
 
 test('filterDpnfModules filters by status and search query accurately', () => {
-  const phase0Only = filterDpnfModules(DPNF_MODULES, 'Implemented', '');
-  assert.equal(phase0Only.length, 5);
+  const implementedOnly = filterDpnfModules(DPNF_MODULES, 'Implemented', '');
+  assert.equal(implementedOnly.length, 11);
 
   const vulkanSearch = filterDpnfModules(DPNF_MODULES, 'ALL', 'vulkan');
   assert.ok(vulkanSearch.length >= 2);

@@ -1,4 +1,4 @@
-#include "dpnf/core/Logger.hpp"
+#include "dpnf/core/Logger.h"
 
 #include <algorithm>
 #include <cctype>

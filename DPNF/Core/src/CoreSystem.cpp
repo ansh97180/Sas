@@ -1,4 +1,4 @@
-#include "dpnf/core/CoreSystem.hpp"
+#include "dpnf/core/CoreSystem.h"
 
 #include <sstream>
 
@@ -53,7 +53,7 @@ std::string DiagnosticReport::to_human_readable() const {
 
     oss << "System Memory (Total)  : " << (platform.memory.total_physical_bytes / (1024ULL * 1024ULL)) << " MiB\n";
     oss << "System Memory (Avail)  : " << (platform.memory.available_physical_bytes / (1024ULL * 1024ULL)) << " MiB\n";
-    oss << "Vulkan Loader Present  : " << (platform.vulkan.loader_present ? "YES" : "NO") << "\n";
+    oss << "Vulkan Compute Ready   : " << (platform.vulkan.discovered_device_count > 0 ? "YES" : "NO") << "\n";
     oss << "Vulkan Status Note     : " << platform.vulkan.diagnostic_note << "\n";
     oss << "Worker Thread Pool     : " << worker_thread_count << " workers (" << completed_jobs << " jobs completed)\n";
     oss << "Resource Allocations   : " << resources.allocation_count << " allocs / "
@@ -107,6 +107,8 @@ std::string DiagnosticReport::to_json() const {
     oss << "    },\n";
     oss << "    \"vulkan\": {\n";
     oss << "      \"loader_present\": " << (platform.vulkan.loader_present ? "true" : "false") << ",\n";
+    oss << "      \"discovered_device_count\": " << platform.vulkan.discovered_device_count << ",\n";
+    oss << "      \"device_name\": \"" << json_escape(platform.vulkan.device_names.empty() ? "None" : platform.vulkan.device_names.front()) << "\",\n";
     oss << "      \"loader_library_path\": \"" << json_escape(platform.vulkan.loader_library_path) << "\",\n";
     oss << "      \"diagnostic_note\": \"" << json_escape(platform.vulkan.diagnostic_note) << "\"\n";
     oss << "    }\n";
@@ -179,18 +181,15 @@ Error CoreSystem::initialize(const config::FrameworkConfig& cfg) {
         "Platform",
         "Detected OS: " + platform_.os_name + " | Arch: " +
             platform::PlatformDetector::arch_to_string(platform_.architecture) +
-            " | Logical CPUs: " + std::to_string(platform_.cpu.logical_cores));
+            " | Logical CPUs: " + std::to_string(platform_.cpu.logical_cores) +
+            " | Vulkan Devices: " + std::to_string(platform_.vulkan.discovered_device_count));
 
-    if (config_.device_policy == config::DevicePolicy::PreferGPU && !platform_.vulkan.loader_present) {
-        Logger::instance().log(
-            LogLevel::Warn,
-            "Platform",
-            "DevicePolicy::PreferGPU requested, but Vulkan loader is unavailable. Falling back to CPU execution.");
-        active_backend_ = "CPU (Fallback)";
-    } else if (config_.device_policy == config::DevicePolicy::CPUOnly) {
+    if (config_.device_policy == config::DevicePolicy::CPUOnly) {
         active_backend_ = "CPU (Explicit)";
+    } else if (platform_.vulkan.discovered_device_count > 0) {
+        active_backend_ = "Vulkan 1.3 (" + platform_.vulkan.device_names.front() + ") + CPU";
     } else {
-        active_backend_ = "CPU";
+        active_backend_ = "CPU (Fallback)";
     }
 
     resource_tracker_.reset();
@@ -201,7 +200,7 @@ Error CoreSystem::initialize(const config::FrameworkConfig& cfg) {
         "Initialized worker thread pool with " + std::to_string(thread_pool_->worker_count()) + " threads.");
 
     initialized_ = true;
-    Logger::instance().log(LogLevel::Info, "CoreSystem", "DPNF Phase 0 initialization complete.");
+    Logger::instance().log(LogLevel::Info, "CoreSystem", "DPNF initialization complete. Backend: " + active_backend_);
     return Error::ok();
 }
 

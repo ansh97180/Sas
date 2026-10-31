@@ -4,6 +4,6 @@ add_executable(dpnf_sandbox
 
 target_link_libraries(dpnf_sandbox
     PRIVATE
-        dpnf_core
+        dpnf_graphics
         dpnf_warnings
 )

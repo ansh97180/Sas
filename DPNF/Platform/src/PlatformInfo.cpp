@@ -1,12 +1,14 @@
-#include "dpnf/platform/PlatformInfo.hpp"
+#include "dpnf/platform/PlatformInfo.h"
+
+#include <vulkan/vulkan.h>
 
 #include <algorithm>
 #include <fstream>
 #include <sstream>
 #include <thread>
+#include <vector>
 
 #if defined(__linux__)
-#include <dlfcn.h>
 #include <sys/sysinfo.h>
 #include <sys/utsname.h>
 #include <unistd.h>
@@ -101,53 +103,59 @@ void detect_linux_cpu_info(CpuCapabilities& cpu) {
 
 VulkanProbeStatus probe_vulkan_runtime() {
     VulkanProbeStatus status{};
-#if defined(__linux__)
-    void* handle = dlopen("libvulkan.so.1", RTLD_NOW | RTLD_LOCAL);
-    if (!handle) {
-        handle = dlopen("libvulkan.so", RTLD_NOW | RTLD_LOCAL);
+    std::uint32_t instance_version = VK_API_VERSION_1_0;
+    if (vkEnumerateInstanceVersion(&instance_version) == VK_SUCCESS) {
+        status.loader_present = true;
+        status.loader_library_path = "libvulkan.so.1";
+        status.api_version_major = VK_API_VERSION_MAJOR(instance_version);
+        status.api_version_minor = VK_API_VERSION_MINOR(instance_version);
+        status.api_version_patch = VK_API_VERSION_PATCH(instance_version);
     }
 
-    if (!handle) {
-        status.loader_present = false;
-        status.diagnostic_note =
-            "Vulkan runtime loader (libvulkan.so.1) not installed on host; CPU execution fallback active.";
+    VkApplicationInfo app_info{};
+    app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+    app_info.pApplicationName = "DPNF_PlatformProbe";
+    app_info.applicationVersion = VK_MAKE_API_VERSION(0, 1, 0, 0);
+    app_info.pEngineName = "DPNF";
+    app_info.engineVersion = VK_MAKE_API_VERSION(0, 1, 0, 0);
+    app_info.apiVersion = VK_API_VERSION_1_2;
+
+    VkInstanceCreateInfo create_info{};
+    create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+    create_info.pApplicationInfo = &app_info;
+
+    VkInstance instance = VK_NULL_HANDLE;
+    const VkResult res = vkCreateInstance(&create_info, nullptr, &instance);
+    if (res != VK_SUCCESS || instance == VK_NULL_HANDLE) {
+        status.diagnostic_note = "Vulkan loader present, but vkCreateInstance returned " +
+                                 std::to_string(static_cast<int>(res)) + "; CPU fallback active.";
         return status;
     }
 
-    status.loader_present = true;
-    status.loader_library_path = "libvulkan.so.1";
-
-    using PFN_vkEnumerateInstanceVersion = int (*)(std::uint32_t*);
-    auto enum_version = reinterpret_cast<PFN_vkEnumerateInstanceVersion>(
-        dlsym(handle, "vkEnumerateInstanceVersion"));
-    if (enum_version != nullptr) {
-        std::uint32_t raw_version = 0;
-        if (enum_version(&raw_version) == 0) {
-            status.api_version_major = (raw_version >> 22U) & 0x7FU;
-            status.api_version_minor = (raw_version >> 12U) & 0x3FFU;
-            status.api_version_patch = raw_version & 0xFFFU;
+    std::uint32_t dev_count = 0;
+    if (vkEnumeratePhysicalDevices(instance, &dev_count, nullptr) == VK_SUCCESS && dev_count > 0) {
+        status.discovered_device_count = dev_count;
+        std::vector<VkPhysicalDevice> devices(dev_count);
+        if (vkEnumeratePhysicalDevices(instance, &dev_count, devices.data()) == VK_SUCCESS) {
+            for (const auto& phys : devices) {
+                VkPhysicalDeviceProperties props{};
+                vkGetPhysicalDeviceProperties(phys, &props);
+                status.device_names.emplace_back(props.deviceName);
+            }
         }
     }
 
-    status.diagnostic_note =
-        "Vulkan loader symbol table verified. Full VkInstance device enumeration scheduled for Phase 5.";
-    dlclose(handle);
-#elif defined(_WIN32)
-    HMODULE module = LoadLibraryA("vulkan-1.dll");
-    if (!module) {
-        status.loader_present = false;
-        status.diagnostic_note =
-            "Vulkan runtime loader (vulkan-1.dll) not found; CPU execution fallback active.";
-        return status;
+    vkDestroyInstance(instance, nullptr);
+
+    if (status.discovered_device_count > 0) {
+        status.diagnostic_note = "Vulkan " + std::to_string(status.api_version_major) + "." +
+                                 std::to_string(status.api_version_minor) + "." +
+                                 std::to_string(status.api_version_patch) + " active (" +
+                                 std::to_string(status.discovered_device_count) + " compute device: " +
+                                 status.device_names.front() + ").";
+    } else {
+        status.diagnostic_note = "Vulkan instance created, 0 physical devices enumerated; CPU fallback active.";
     }
-    status.loader_present = true;
-    status.loader_library_path = "vulkan-1.dll";
-    status.diagnostic_note = "Vulkan loader verified on Windows.";
-    FreeLibrary(module);
-#else
-    status.loader_present = false;
-    status.diagnostic_note = "Vulkan runtime probe not supported on this OS; CPU fallback active.";
-#endif
     return status;
 }
 

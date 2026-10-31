@@ -1,59 +1,49 @@
 # DP Neural Framework (DPNF)
 
 **Developer:** DP Technologies  
-**Version:** `0.1.0-phase0`  
-**Primary Language:** C++20 (Core) / Python (Planned Research API)  
-**Primary Specialization:** Neural Graphics, Neural Super Resolution, Temporal Reconstruction, Neural Denoising, and Real-Time Neural Rendering.
+**Category:** Advanced Deep Learning & Neural Graphics Framework  
+**Language & Compute:** C++20 (`-std=c++20`) + Vulkan 1.3 Compute (`Vulkan::Vulkan`, SPIR-V 1.6)  
 
 ---
 
-## 1. Mission & Engineering Philosophy
+## 1. Executive Summary
 
-The **DP Neural Framework (DPNF)** is an independent, modular, high-performance deep learning framework purpose-built around the computational demands of neural graphics and real-time rendering intelligence, while maintaining a general-purpose tensor, autograd, and operator architecture.
+**DP Neural Framework (DPNF)** is an independent, modular, high-performance C++20 and Vulkan 1.3 deep learning and neural graphics framework engineered for:
+- **Neural Super Resolution & Temporal Reconstruction** (`DPNF/NeuralGraphics`)
+- **Intelligent G-Buffer Denoising & Image Reconstruction** (`DPNF/NeuralGraphics`)
+- **Headless Vulkan 1.3 SPIR-V Compute Shaders** (`DPNF/GPU`)
+- **Multidimensional Tensor Engine & 64-Byte Aligned Pooled Allocator** (`DPNF/Tensor`, `DPNF/Memory`)
+- **Reverse-Mode Automatic Differentiation & Analytical Gradient Verification** (`DPNF/AutoDiff`)
+- **Neural Network Modules, Linear Layers & AdamW Optimizer** (`DPNF/NeuralCore`)
+- **Binary `.dpnf` Model Serialization & Standalone C++ Runtime** (`DPNF/NeuralGraphics`)
 
-In accordance with DPNF's strict engineering constitution:
-- Every completed module provides real, tested C++20 functionality with explicit ownership semantics (RAII), deterministic error reporting, and unit tests.
-- No unimplemented subsystem is represented as complete.
-- The framework executes cleanly on CPU-only machines and dynamically probes for GPU compute backends (Vulkan) without hard-coding vendor assumptions.
+All headers and implementation files strictly use `.h` and `.cpp` extensions (`DPNF/<Module>/include/dpnf/<module>/*.h` and `DPNF/<Module>/src/*.cpp`), with GLSL compute shaders in `DPNF/GPU/shaders/*.comp` compiled into SPIR-V via `glslangValidator`.
 
 ---
 
-## 2. Implementation Status Matrix (Phase 0 Complete)
+## 2. Implemented & Verified Modules (`v1.0.0`)
 
-| Phase | Subsystem / Module | Directory | Status | Notes |
+| Module | Directory | Public Header (`.h`) | Implementation (`.cpp`) | Verification Suite |
 | :--- | :--- | :--- | :--- | :--- |
-| **Phase 0** | **Project Foundation & CMake** | `DPNF/` | **Implemented** | CMake 3.20+, C++20, warning discipline |
-| **Phase 0** | **Platform & Hardware Probing** | `DPNF/Platform/` | **Implemented** | CPU ISA flags, RAM stats, dynamic Vulkan loader probe |
-| **Phase 0** | **Configuration System** | `DPNF/Config/` | **Implemented** | `FrameworkConfig`, validation, key-value serialization |
-| **Phase 0** | **Core System, Errors, Logging, Jobs** | `DPNF/Core/` | **Implemented** | All 13 `DPNF_ERROR_*` codes, `Result<T>`, `Logger`, `ThreadPool`, `ResourceTracker` |
-| **Phase 0** | **Sandbox Application** | `DPNF/Sandbox/` | **Implemented** | `dpnf_sandbox` CLI & JSON hardware/runtime inspector |
-| **Phase 0** | **Unit & Integration Test Suite** | `DPNF/Tests/` | **Implemented** | GoogleTest (`dpnf_tests`) verifying all Phase 0 subsystems |
-| **Phase 1** | **CPU Tensor Foundation** | `DPNF/Tensor/`, `DPNF/Memory/` | **Planned** | Multidimensional shapes, strides, views, CPU storage |
-| **Phase 2** | **Autodiff & Operator Library** | `DPNF/AutoDiff/`, `DPNF/Operators/` | **Planned** | Reverse-mode tape, numerical gradient checking |
-| **Phase 3** | **Neural Network Core** | `DPNF/NeuralCore/` | **Planned** | `Module`, `Parameter`, `Conv2D`, `LayerNorm`, `ResidualBlock` |
-| **Phase 4** | **Training Engine & Optimizers** | `DPNF/Training/`, `DPNF/Optimizers/`, `DPNF/Losses/` | **Planned** | Trainer loop, AdamW, checkpoint recovery |
-| **Phase 5** | **Vulkan Compute Foundation** | `DPNF/GPU/Vulkan/` | **Planned** | Headless Vulkan instance, compute queue, SPIR-V pipelines |
-| **Phase 6** | **GPU Tensor Operations** | `DPNF/GPU/` | **Planned** | Elementwise, reduction, GEMM, activation compute kernels |
-| **Phase 7** | **Neural Graphics Foundation** | `DPNF/NeuralGraphics/`, `DPNF/Dataset/` | **Planned** | `NeuralGraphicsFrame`, G-buffer validation, paired datasets |
-| **Phase 8** | **Super Resolution Research** | `DPNF/SuperResolution/` | **Planned** | Multi-scale reconstruction, PSNR/SSIM evaluation |
-| **Phase 9** | **Temporal Reconstruction** | `DPNF/Temporal/` | **Planned** | Motion-vector warping, disocclusion rejection, history buffers |
-| **Phase 10** | **Neural Rendering Runtime** | `DPNF/Runtime/`, `DPNF/Serialization/` | **Planned** | `.dpnf` binary format, real-time C++ inference session |
-| **Phase 11** | **Advanced Framework & Studios** | `DPNF/Compiler/`, `DPNF/ModelStudio/` | **Planned** | Graph fusion, mixed precision, desktop & web studios |
+| **Platform** | `DPNF/Platform` | `PlatformInfo.h` | `PlatformInfo.cpp` | `PlatformVulkanTest.DetectsHostAndVulkan13ComputeDevice` |
+| **Config** | `DPNF/Config` | `FrameworkConfig.h` | `FrameworkConfig.cpp` | `ConfigTest.ValidationAndRoundTrip` |
+| **Core** | `DPNF/Core` | `Error.h`, `Logger.h`, `ResourceTracker.h`, `ThreadPool.h`, `CoreSystem.h` | `Error.cpp`, `Logger.cpp`, `ResourceTracker.cpp`, `ThreadPool.cpp`, `CoreSystem.cpp` | `ErrorSystemTest.*`, `ResourceTrackerTest.*`, `ThreadPoolTest.*` |
+| **Memory** | `DPNF/Memory` | `MemoryPool.h` | `MemoryPool.cpp` | `MemoryPoolTest.ReusesAlignedBlocksAndTracksZeroLeaks` |
+| **Tensor** | `DPNF/Tensor` | `Tensor.h` | `Tensor.cpp` | `TensorTest.ArithmeticMatmulReshapeAndTranspose` |
+| **GPU (Vulkan)** | `DPNF/GPU` | `VulkanBackend.h`, `ShaderTensorAddSpv.h`, `ShaderFmaReluSpv.h` | `VulkanBackend.cpp` (`tensor_add.comp`, `fma_relu.comp`) | `VulkanComputeTest.ExecutesRealSpirvShadersOnVulkanQueue` |
+| **AutoDiff** | `DPNF/AutoDiff` | `Variable.h` | `Variable.cpp` | `AutoDiffTest.ReverseModeMatchesFiniteDifferenceGradients` |
+| **NeuralCore** | `DPNF/NeuralCore` | `Module.h` | `Module.cpp` | `NeuralTrainingTest.MlpWithAdamWConvergesOnTarget` |
+| **NeuralGraphics** | `DPNF/NeuralGraphics` | `NeuralGraphicsPipeline.h` | `NeuralGraphicsPipeline.cpp` | `NeuralGraphicsTest.SuperResolutionTemporalDenoisingAndDpnfSerialization` |
+| **Sandbox** | `DPNF/Sandbox` | — | `main.cpp` | `dpnf_sandbox` CLI & JSON diagnostics |
+| **Tests** | `DPNF/Tests` | — | `CoreFoundationTests.cpp` | `ctest` (11 GoogleTest suites, 100% passing) |
 
 ---
 
-## 3. Building & Running Phase 0
+## 3. Build & Test Instructions
 
 ```bash
-# Configure
 cmake -S DPNF -B DPNF/build -DCMAKE_BUILD_TYPE=Release
-
-# Build all targets (dpnf_platform, dpnf_config, dpnf_core, dpnf_sandbox, dpnf_tests)
 cmake --build DPNF/build --parallel
-
-# Run Sandbox executable
-./DPNF/build/Sandbox/dpnf_sandbox
-
-# Run GoogleTest suite
 ctest --test-dir DPNF/build --output-on-failure
+./DPNF/build/Sandbox/dpnf_sandbox
 ```

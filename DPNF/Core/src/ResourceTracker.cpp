@@ -1,4 +1,4 @@
-#include "dpnf/core/ResourceTracker.hpp"
+#include "dpnf/core/ResourceTracker.h"
 
 #include <algorithm>
 

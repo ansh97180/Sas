@@ -7,11 +7,11 @@ add_executable(dpnf_tests
 
 target_link_libraries(dpnf_tests
     PRIVATE
-        dpnf_core
+        dpnf_graphics
         dpnf_warnings
         GTest::gtest
         GTest::gtest_main
         Threads::Threads
 )
 
-add_test(NAME DPNF_Phase0_UnitTests COMMAND dpnf_tests)
+add_test(NAME DPNF_FullFramework_UnitTests COMMAND dpnf_tests)

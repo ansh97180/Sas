@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(DPNF
-    VERSION 0.1.0
-    DESCRIPTION "DP Neural Framework (DPNF) - High-Performance Neural Graphics & Deep Learning Framework"
+    VERSION 1.0.0
+    DESCRIPTION "DP Neural Framework (DPNF) - High-Performance Neural Graphics & Vulkan Compute Deep Learning Framework"
     LANGUAGES CXX
 )
 
@@ -38,10 +38,16 @@ else()
     endif()
 endif()
 
-# Core Phase 0 Modules
+# Complete DPNF Subsystems (.h / .cpp)
 add_subdirectory(Platform)
 add_subdirectory(Config)
 add_subdirectory(Core)
+add_subdirectory(Memory)
+add_subdirectory(Tensor)
+add_subdirectory(GPU)
+add_subdirectory(AutoDiff)
+add_subdirectory(NeuralCore)
+add_subdirectory(NeuralGraphics)
 
 if(DPNF_BUILD_SANDBOX)
     add_subdirectory(Sandbox)

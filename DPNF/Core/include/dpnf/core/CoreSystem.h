@@ -1,11 +1,11 @@
 #pragma once
 
-#include "dpnf/config/FrameworkConfig.hpp"
-#include "dpnf/core/Error.hpp"
-#include "dpnf/core/Logger.hpp"
-#include "dpnf/core/ResourceTracker.hpp"
-#include "dpnf/core/ThreadPool.hpp"
-#include "dpnf/platform/PlatformInfo.hpp"
+#include "dpnf/config/FrameworkConfig.h"
+#include "dpnf/core/Error.h"
+#include "dpnf/core/Logger.h"
+#include "dpnf/core/ResourceTracker.h"
+#include "dpnf/core/ThreadPool.h"
+#include "dpnf/platform/PlatformInfo.h"
 
 #include <memory>
 #include <mutex>
@@ -14,9 +14,9 @@
 namespace dpnf::core {
 
 struct DiagnosticReport {
-    std::string framework_version{"0.1.0-phase0"};
+    std::string framework_version{"1.0.0"};
     bool initialized{false};
-    std::string active_execution_backend{"CPU"};
+    std::string active_execution_backend{"Vulkan + CPU"};
     config::FrameworkConfig config{};
     platform::PlatformReport platform{};
     ResourceSnapshot resources{};
@@ -43,7 +43,7 @@ public:
     [[nodiscard]] DiagnosticReport generate_diagnostic_report() const;
 
     static constexpr const char* version() noexcept {
-        return "0.1.0-phase0";
+        return "1.0.0";
     }
 
 private:
@@ -51,7 +51,7 @@ private:
 
     mutable std::mutex mutex_{};
     bool initialized_{false};
-    std::string active_backend_{"CPU"};
+    std::string active_backend_{"Vulkan + CPU"};
     config::FrameworkConfig config_{};
     platform::PlatformReport platform_{};
     ResourceTracker resource_tracker_{};

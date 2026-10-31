@@ -1,0 +1,19 @@
+#version 450
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) readonly buffer BufA { float a[]; };
+layout(set = 0, binding = 1) readonly buffer BufB { float b[]; };
+layout(set = 0, binding = 2) writeonly buffer BufOut { float out_data[]; };
+
+layout(push_constant) uniform PushConsts {
+    uint count;
+    float alpha;
+    float beta;
+} pc;
+
+void main() {
+    uint idx = gl_GlobalInvocationID.x;
+    if (idx < pc.count) {
+        out_data[idx] = pc.alpha * a[idx] + pc.beta * b[idx];
+    }
+}

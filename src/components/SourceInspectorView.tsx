@@ -72,7 +72,7 @@ export const SourceInspectorView: React.FC<SourceInspectorViewProps> = ({
           C++20 Source, Header &amp; Build Configuration Inspector
         </h1>
         <p className="text-sm text-slate-400 mt-1 max-w-3xl">
-          Inspect the live C++20 headers (<code className="text-slate-200">.hpp</code>), implementation units (<code className="text-slate-200">.cpp</code>), CMake build scripts, and unit tests in the <code className="text-slate-200">DPNF/</code> repository.
+          Inspect the live C++20 headers (<code className="text-slate-200">.h</code>), implementation units (<code className="text-slate-200">.cpp</code>), GLSL/SPIR-V shaders (<code className="text-slate-200">.comp</code>), CMake scripts, and unit tests in the <code className="text-slate-200">DPNF/</code> repository.
         </p>
       </div>
 

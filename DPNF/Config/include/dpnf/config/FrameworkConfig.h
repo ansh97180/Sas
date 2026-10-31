@@ -17,8 +17,8 @@ struct FrameworkConfig {
     std::string log_level{"info"};
     std::string log_file_path{};
     bool log_to_console{true};
-    std::uint32_t worker_threads{0}; // 0 = auto-detect hardware concurrency
-    std::uint64_t max_cpu_memory_bytes{0}; // 0 = unbounded up to system RAM
+    std::uint32_t worker_threads{0};
+    std::uint64_t max_cpu_memory_bytes{0};
     std::uint64_t random_seed{42ULL};
     bool deterministic_execution{true};
     bool enable_resource_tracking{true};

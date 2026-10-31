@@ -1,0 +1,20 @@
+#version 450
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) readonly buffer BufX { float x[]; };
+layout(set = 0, binding = 1) readonly buffer BufW { float w[]; };
+layout(set = 0, binding = 2) writeonly buffer BufY { float y[]; };
+
+layout(push_constant) uniform PushConsts {
+    uint count;
+    float bias;
+    float leak;
+} pc;
+
+void main() {
+    uint idx = gl_GlobalInvocationID.x;
+    if (idx < pc.count) {
+        float val = x[idx] * w[idx] + pc.bias;
+        y[idx] = val >= 0.0 ? val : val * pc.leak;
+    }
+}

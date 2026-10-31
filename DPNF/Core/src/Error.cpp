@@ -1,4 +1,4 @@
-#include "dpnf/core/Error.hpp"
+#include "dpnf/core/Error.h"
 
 #include <sstream>
 

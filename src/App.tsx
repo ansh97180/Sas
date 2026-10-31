@@ -17,7 +17,7 @@ export default function App() {
   const [durationMs, setDurationMs] = useState<number | null>(null);
   const [loadingDiagnostics, setLoadingDiagnostics] = useState<boolean>(true);
   const [selectedFilePath, setSelectedFilePath] = useState<string>(
-    'DPNF/Core/include/dpnf/core/CoreSystem.hpp'
+    'DPNF/GPU/include/dpnf/gpu/VulkanBackend.h'
   );
 
   const fetchDiagnostics = async () => {
@@ -70,7 +70,7 @@ export default function App() {
               activeTab === 'overview' ? 'text-sky-400 border-b-2 border-sky-400' : ''
             }`}
           >
-            Phase 0 Architecture
+            Architecture &amp; Vulkan
           </button>
           <button
             type="button"
@@ -88,7 +88,7 @@ export default function App() {
               activeTab === 'source' ? 'text-sky-400 border-b-2 border-sky-400' : ''
             }`}
           >
-            C++20 Source Tree
+            C++20 Source (.h / .cpp)
           </button>
           <button
             type="button"
@@ -145,7 +145,7 @@ export default function App() {
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <div>DP Neural Framework (DPNF) · DP Technologies · Apache-2.0 License</div>
           <div className="font-mono tabular-nums">
-            Phase 0 Foundation · C++20 Static Libraries + Sandbox + GoogleTest
+            C++20 (.h / .cpp) · Vulkan 1.3 SPIR-V Compute · Neural Graphics · GoogleTest
           </div>
         </div>
       </footer>

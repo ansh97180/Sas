@@ -1,11 +1,18 @@
-#include "dpnf/config/FrameworkConfig.hpp"
-#include "dpnf/core/CoreSystem.hpp"
-#include "dpnf/core/Error.hpp"
-#include "dpnf/core/Logger.hpp"
+#include "dpnf/autodiff/Variable.h"
+#include "dpnf/config/FrameworkConfig.h"
+#include "dpnf/core/CoreSystem.h"
+#include "dpnf/core/Error.h"
+#include "dpnf/core/Logger.h"
+#include "dpnf/gpu/VulkanBackend.h"
+#include "dpnf/graphics/NeuralGraphicsPipeline.h"
+#include "dpnf/neural/Module.h"
+#include "dpnf/tensor/Tensor.h"
 
 #include <atomic>
 #include <cstdlib>
+#include <iomanip>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -54,7 +61,7 @@ int main(int argc, char** argv) {
     }
 
     dpnf::config::FrameworkConfig cfg{};
-    cfg.application_name = "DPNF_Phase0_Sandbox";
+    cfg.application_name = "DPNF_Vulkan_NeuralGraphics_Runtime";
     cfg.log_level = log_level;
     cfg.log_to_console = !json_output;
     cfg.worker_threads = threads;
@@ -75,12 +82,73 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
-    // Exercise ResourceTracker with deterministic scratch allocations
-    auto& tracker = core.resource_tracker();
-    auto alloc1 = tracker.record_allocation("phase0_scratch_buffer_a", "Sandbox", 65536);
-    auto alloc2 = tracker.record_allocation("phase0_diagnostic_workspace", "Sandbox", 131072);
+    // 1. Execute Vulkan 1.3 SPIR-V Compute Shaders on GPU/Lavapipe
+    if (cfg.device_policy != dpnf::config::DevicePolicy::CPUOnly) {
+        dpnf::gpu::VulkanComputeEngine vk_engine;
+        if (vk_engine.initialize().is_ok()) {
+            auto a = dpnf::tensor::Tensor::arange(1024, 1.0f, 0.5f);
+            auto b = dpnf::tensor::Tensor::arange(1024, 2.0f, 0.25f);
+            dpnf::gpu::VulkanDispatchMetrics add_metrics{};
+            auto gpu_res = vk_engine.execute_tensor_add(a, b, 1.5f, -0.5f, &add_metrics);
+            if (gpu_res.is_ok()) {
+                std::ostringstream msg;
+                msg << "Dispatched SPIR-V kernel '" << add_metrics.kernel_name
+                    << "' on '" << add_metrics.device_name << "' (" << add_metrics.element_count
+                    << " floats, " << std::fixed << std::setprecision(2) << add_metrics.gpu_dispatch_ms
+                    << " ms, max diff vs CPU = " << std::scientific << add_metrics.max_abs_diff_vs_cpu << ")";
+                dpnf::core::Logger::instance().log(dpnf::core::LogLevel::Info, "VulkanCompute", msg.str());
+            }
 
-    // Exercise ThreadPool with parallel diagnostic tasks
+            dpnf::gpu::VulkanDispatchMetrics fma_metrics{};
+            auto fma_res = vk_engine.execute_fma_leaky_relu(a, b, -10.0f, 0.05f, &fma_metrics);
+            if (fma_res.is_ok()) {
+                std::ostringstream msg;
+                msg << "Dispatched SPIR-V kernel '" << fma_metrics.kernel_name
+                    << "' (" << std::fixed << std::setprecision(2) << fma_metrics.gpu_dispatch_ms
+                    << " ms, validation=" << (fma_metrics.validation_passed ? "PASSED" : "FAILED") << ")";
+                dpnf::core::Logger::instance().log(dpnf::core::LogLevel::Info, "VulkanCompute", msg.str());
+            }
+            vk_engine.shutdown();
+        }
+    }
+
+    // 2. Execute Autodiff + NeuralCore + AdamW Training Loop
+    {
+        const auto train_summary = dpnf::neural::run_supervised_training_demo(25);
+        std::ostringstream msg;
+        msg << "Trained 2-layer MLP with AdamW for " << train_summary.epochs
+            << " epochs: initial_loss=" << std::fixed << std::setprecision(5) << train_summary.initial_loss
+            << " -> final_loss=" << train_summary.final_loss
+            << " (converged=" << (train_summary.converged ? "true" : "false") << ")";
+        dpnf::core::Logger::instance().log(dpnf::core::LogLevel::Info, "NeuralTraining", msg.str());
+    }
+
+    // 3. Execute NeuralGraphics 2x Super Resolution, Temporal Reconstruction & Denoising
+    {
+        dpnf::graphics::NeuralGraphicsFrame frame{};
+        frame.color = dpnf::tensor::Tensor({3, 16, 16}, 0.65f);
+        frame.depth = dpnf::tensor::Tensor({1, 16, 16}, 0.4f);
+        frame.motion_vectors = dpnf::tensor::Tensor({2, 16, 16}, 1.0f);
+        frame.exposure = 1.0f;
+
+        auto sr_out = dpnf::graphics::NeuralGraphicsPipeline::super_resolve_2x(frame.color);
+        auto denoised = dpnf::graphics::NeuralGraphicsPipeline::denoise_gbuffer(frame);
+        auto temporal = dpnf::graphics::NeuralGraphicsPipeline::temporal_reconstruct(
+            frame, frame.color, frame.depth, 0.85f);
+
+        if (sr_out.is_ok() && denoised.is_ok() && temporal.is_ok()) {
+            const auto metrics = dpnf::graphics::NeuralGraphicsPipeline::evaluate_quality(
+                temporal.value(), frame.color);
+            std::ostringstream msg;
+            msg << "Executed 2x SuperResolution (" << frame.color.shape_string() << " -> "
+                << sr_out.value().shape_string() << "), TemporalReconstruct & GBufferDenoise (PSNR="
+                << std::fixed << std::setprecision(1) << metrics.psnr_db << " dB, SSIM="
+                << std::setprecision(4) << metrics.ssim << ")";
+            dpnf::core::Logger::instance().log(dpnf::core::LogLevel::Info, "NeuralGraphics", msg.str());
+        }
+    }
+
+    // 4. Exercise ThreadPool
     if (auto* pool = core.thread_pool()) {
         std::atomic<std::uint32_t> accumulator{0};
         std::vector<std::future<void>> futures;
@@ -94,17 +162,6 @@ int main(int argc, char** argv) {
             f.get();
         }
         pool->wait_idle();
-        dpnf::core::Logger::instance().log(
-            dpnf::core::LogLevel::Debug,
-            "Sandbox",
-            "ThreadPool executed 8 verification tasks; checksum=" + std::to_string(accumulator.load()));
-    }
-
-    if (alloc1.is_ok()) {
-        (void)tracker.record_deallocation(alloc1.value());
-    }
-    if (alloc2.is_ok()) {
-        (void)tracker.record_deallocation(alloc2.value());
     }
 
     if (!simulate_error_code.empty()) {
@@ -121,6 +178,7 @@ int main(int argc, char** argv) {
         }
     }
 
+    dpnf::memory::MemoryPool::instance().release_cached_blocks();
     const auto report = core.generate_diagnostic_report();
     const dpnf::core::Error shutdown_err = core.shutdown();
     if (!shutdown_err.is_ok()) {

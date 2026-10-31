@@ -1,4 +1,4 @@
-#include "dpnf/config/FrameworkConfig.hpp"
+#include "dpnf/config/FrameworkConfig.h"
 
 #include <algorithm>
 #include <cctype>

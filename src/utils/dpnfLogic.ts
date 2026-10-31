@@ -145,16 +145,16 @@ export const DPNF_ERROR_REGISTRY: DpnfErrorSpec[] = [
 export const DPNF_MODULES: DpnfModuleEntry[] = [
   {
     id: 'platform',
-    name: 'Platform & Hardware Detection',
+    name: 'Platform & Vulkan 1.3 Device Discovery',
     directory: 'DPNF/Platform',
     phase: 0,
     phaseTitle: 'Phase 0: Project Foundation',
     status: 'Implemented',
     category: 'Foundation',
-    responsibility: 'OS identification, CPU topology & SIMD/AMX instruction set detection, system RAM query, and dynamic Vulkan loader probing with guaranteed CPU fallback.',
-    publicHeaders: ['DPNF/Platform/include/dpnf/platform/PlatformInfo.hpp'],
+    responsibility: 'OS identification, CPU topology & SIMD/AMX ISA detection, system RAM query, and native Vulkan 1.3 vkEnumeratePhysicalDevices discovery.',
+    publicHeaders: ['DPNF/Platform/include/dpnf/platform/PlatformInfo.h'],
     sourceFiles: ['DPNF/Platform/src/PlatformInfo.cpp'],
-    unitTestSuite: 'PlatformDetectorTest.ReportsValidHostCapabilities'
+    unitTestSuite: 'PlatformVulkanTest.DetectsHostAndVulkan13ComputeDevice'
   },
   {
     id: 'config',
@@ -165,9 +165,9 @@ export const DPNF_MODULES: DpnfModuleEntry[] = [
     status: 'Implemented',
     category: 'Foundation',
     responsibility: 'Strongly typed FrameworkConfig, parameter validation, deterministic seed configuration, device policy selection, and key-value serialization.',
-    publicHeaders: ['DPNF/Config/include/dpnf/config/FrameworkConfig.hpp'],
+    publicHeaders: ['DPNF/Config/include/dpnf/config/FrameworkConfig.h'],
     sourceFiles: ['DPNF/Config/src/FrameworkConfig.cpp'],
-    unitTestSuite: 'ConfigTest.ValidationAndKeyValueRoundTrip, ConfigTest.RejectsInvalidParameters'
+    unitTestSuite: 'ConfigTest.ValidationAndRoundTrip'
   },
   {
     id: 'core',
@@ -177,13 +177,13 @@ export const DPNF_MODULES: DpnfModuleEntry[] = [
     phaseTitle: 'Phase 0: Project Foundation',
     status: 'Implemented',
     category: 'Foundation',
-    responsibility: 'Framework lifecycle (initialize/shutdown), 13 DPNF_ERROR_* structured error types & Result<T>, multi-sink thread-safe Logger, ResourceTracker with budget & double-free detection, and worker ThreadPool.',
+    responsibility: 'Framework lifecycle (initialize/shutdown), 13 DPNF_ERROR_* structured error types & Result<T>, multi-sink thread-safe Logger, ResourceTracker, and worker ThreadPool.',
     publicHeaders: [
-      'DPNF/Core/include/dpnf/core/Error.hpp',
-      'DPNF/Core/include/dpnf/core/Logger.hpp',
-      'DPNF/Core/include/dpnf/core/ResourceTracker.hpp',
-      'DPNF/Core/include/dpnf/core/ThreadPool.hpp',
-      'DPNF/Core/include/dpnf/core/CoreSystem.hpp'
+      'DPNF/Core/include/dpnf/core/Error.h',
+      'DPNF/Core/include/dpnf/core/Logger.h',
+      'DPNF/Core/include/dpnf/core/ResourceTracker.h',
+      'DPNF/Core/include/dpnf/core/ThreadPool.h',
+      'DPNF/Core/include/dpnf/core/CoreSystem.h'
     ],
     sourceFiles: [
       'DPNF/Core/src/Error.cpp',
@@ -192,124 +192,119 @@ export const DPNF_MODULES: DpnfModuleEntry[] = [
       'DPNF/Core/src/ThreadPool.cpp',
       'DPNF/Core/src/CoreSystem.cpp'
     ],
-    unitTestSuite: 'ErrorSystemTest.*, LoggerTest.*, ResourceTrackerTest.*, ThreadPoolTest.*, CoreSystemTest.*'
+    unitTestSuite: 'ErrorSystemTest.*, ResourceTrackerTest.*, ThreadPoolTest.*'
+  },
+  {
+    id: 'memory',
+    name: '64-Byte Aligned Pooled Memory Allocator',
+    directory: 'DPNF/Memory',
+    phase: 1,
+    phaseTitle: 'Phase 1: Pooled Memory & Storage',
+    status: 'Implemented',
+    category: 'Compute & Memory',
+    responsibility: '64-byte SIMD-aligned pooled memory allocator with free-block caching, hit/miss telemetry, and deterministic ResourceTracker leak auditing.',
+    publicHeaders: ['DPNF/Memory/include/dpnf/memory/MemoryPool.h'],
+    sourceFiles: ['DPNF/Memory/src/MemoryPool.cpp'],
+    unitTestSuite: 'MemoryPoolTest.ReusesAlignedBlocksAndTracksZeroLeaks'
+  },
+  {
+    id: 'tensor',
+    name: 'Multidimensional Tensor Engine',
+    directory: 'DPNF/Tensor',
+    phase: 1,
+    phaseTitle: 'Phase 1: Tensor Engine',
+    status: 'Implemented',
+    category: 'Compute & Memory',
+    responsibility: 'N-dimensional shapes, row-major strides, reshape, 2D transpose, slicing, elementwise arithmetic (add/sub/mul/div/scale/clamp), 2D/batched matmul, and reductions.',
+    publicHeaders: ['DPNF/Tensor/include/dpnf/tensor/Tensor.h'],
+    sourceFiles: ['DPNF/Tensor/src/Tensor.cpp'],
+    unitTestSuite: 'TensorTest.ArithmeticMatmulReshapeAndTranspose'
+  },
+  {
+    id: 'vulkan_compute',
+    name: 'Headless Vulkan 1.3 Compute Backend & SPIR-V Kernels',
+    directory: 'DPNF/GPU',
+    phase: 2,
+    phaseTitle: 'Phase 2: Vulkan 1.3 Compute & SPIR-V Shaders',
+    status: 'Implemented',
+    category: 'Compute & Memory',
+    responsibility: 'Headless VkInstance, VkDevice, compute queue dispatch, descriptor sets, push constants, and SPIR-V 1.6 compute shaders (tensor_add.comp, fma_relu.comp) verified against CPU.',
+    publicHeaders: [
+      'DPNF/GPU/include/dpnf/gpu/VulkanBackend.h',
+      'DPNF/GPU/include/dpnf/gpu/ShaderTensorAddSpv.h',
+      'DPNF/GPU/include/dpnf/gpu/ShaderFmaReluSpv.h'
+    ],
+    sourceFiles: [
+      'DPNF/GPU/src/VulkanBackend.cpp',
+      'DPNF/GPU/shaders/tensor_add.comp',
+      'DPNF/GPU/shaders/fma_relu.comp'
+    ],
+    unitTestSuite: 'VulkanComputeTest.ExecutesRealSpirvShadersOnVulkanQueue'
+  },
+  {
+    id: 'autodiff',
+    name: 'Reverse-Mode Automatic Differentiation & Gradient Checker',
+    directory: 'DPNF/AutoDiff',
+    phase: 3,
+    phaseTitle: 'Phase 3: Reverse-Mode Autodiff',
+    status: 'Implemented',
+    category: 'Autodiff & Neural',
+    responsibility: 'Dynamic reverse-mode computation tape (Variable), topological sort backpropagation, add/sub/mul/relu/matmul/mse_loss gradients, and finite-difference gradient verifier.',
+    publicHeaders: ['DPNF/AutoDiff/include/dpnf/autodiff/Variable.h'],
+    sourceFiles: ['DPNF/AutoDiff/src/Variable.cpp'],
+    unitTestSuite: 'AutoDiffTest.ReverseModeMatchesFiniteDifferenceGradients'
+  },
+  {
+    id: 'neural_core',
+    name: 'Neural Network Core (Module, Linear & AdamW Optimizer)',
+    directory: 'DPNF/NeuralCore',
+    phase: 4,
+    phaseTitle: 'Phase 4: Neural Network Modules & Training',
+    status: 'Implemented',
+    category: 'Autodiff & Neural',
+    responsibility: 'Composable Module base class, Xavier-initialized Linear layer, decoupled weight-decay AdamWOptimizer, and supervised training loop convergence.',
+    publicHeaders: ['DPNF/NeuralCore/include/dpnf/neural/Module.h'],
+    sourceFiles: ['DPNF/NeuralCore/src/Module.cpp'],
+    unitTestSuite: 'NeuralTrainingTest.MlpWithAdamWConvergesOnTarget'
+  },
+  {
+    id: 'neural_graphics',
+    name: 'Neural Graphics Pipeline (2x Super Resolution, Temporal, Denoising & .dpnf Format)',
+    directory: 'DPNF/NeuralGraphics',
+    phase: 5,
+    phaseTitle: 'Phase 5: Neural Graphics & .dpnf Serialization',
+    status: 'Implemented',
+    category: 'Neural Graphics',
+    responsibility: 'NeuralGraphicsFrame G-buffer validation, 2x edge-preserving Super Resolution, motion-vector Temporal Reconstruction with depth rejection, bilateral G-buffer Denoising, PSNR/SSIM, and .dpnf binary model save/load.',
+    publicHeaders: ['DPNF/NeuralGraphics/include/dpnf/graphics/NeuralGraphicsPipeline.h'],
+    sourceFiles: ['DPNF/NeuralGraphics/src/NeuralGraphicsPipeline.cpp'],
+    unitTestSuite: 'NeuralGraphicsTest.SuperResolutionTemporalDenoisingAndDpnfSerialization'
   },
   {
     id: 'sandbox',
-    name: 'Sandbox Diagnostic Application',
+    name: 'Sandbox Runtime & Diagnostic Application',
     directory: 'DPNF/Sandbox',
-    phase: 0,
-    phaseTitle: 'Phase 0: Project Foundation',
+    phase: 6,
+    phaseTitle: 'Phase 6: End-to-End Runtime & Diagnostics',
     status: 'Implemented',
-    category: 'Foundation',
-    responsibility: 'CLI diagnostic executable (dpnf_sandbox) that initializes DPNF, exercises ResourceTracker and ThreadPool, tests structured error reporting, and outputs JSON or human-readable reports.',
+    category: 'Runtime & Tools',
+    responsibility: 'CLI executable (dpnf_sandbox) dispatching Vulkan 1.3 SPIR-V shaders, AdamW neural training, 2x Super Resolution & Temporal Reconstruction, and JSON/human telemetry.',
     publicHeaders: [],
     sourceFiles: ['DPNF/Sandbox/src/main.cpp'],
-    unitTestSuite: 'CLI Smoke & Integration Verification'
+    unitTestSuite: 'CLI Smoke & End-to-End Verification'
   },
   {
     id: 'tests',
     name: 'GoogleTest Unit & Integration Suite',
     directory: 'DPNF/Tests',
-    phase: 0,
-    phaseTitle: 'Phase 0: Project Foundation',
+    phase: 6,
+    phaseTitle: 'Phase 6: Automated Verification Suite',
     status: 'Implemented',
-    category: 'Foundation',
-    responsibility: 'Automated C++20 unit and integration tests (dpnf_tests) validating every Phase 0 subsystem via CTest and GoogleTest.',
+    category: 'Runtime & Tools',
+    responsibility: 'Automated C++20 GoogleTest suite (dpnf_tests) validating Vulkan 1.3 compute, Tensor, MemoryPool, AutoDiff, NeuralCore, and NeuralGraphics.',
     publicHeaders: [],
     sourceFiles: ['DPNF/Tests/src/CoreFoundationTests.cpp'],
-    unitTestSuite: 'DPNF_Phase0_UnitTests (8 test cases)'
-  },
-  {
-    id: 'tensor',
-    name: 'Multidimensional Tensor Engine & Memory Subsystem',
-    directory: 'DPNF/Tensor, DPNF/Memory',
-    phase: 1,
-    phaseTitle: 'Phase 1: CPU Tensor Foundation',
-    status: 'Planned',
-    category: 'Compute & Memory',
-    responsibility: 'N-dimensional shapes, explicit strides, views, slicing, broadcasting, CPU storage ownership, memory pooling, and basic arithmetic/reductions independent of Vulkan.',
-    publicHeaders: [],
-    sourceFiles: [],
-    unitTestSuite: 'Scheduled for Phase 1'
-  },
-  {
-    id: 'autodiff',
-    name: 'Reverse-Mode Automatic Differentiation & Operator Library',
-    directory: 'DPNF/AutoDiff, DPNF/Operators',
-    phase: 2,
-    phaseTitle: 'Phase 2: Autodiff and Operators',
-    status: 'Planned',
-    category: 'Autodiff & Neural',
-    responsibility: 'Dynamic computation graph recording, backward propagation, gradient accumulation, operator registry, and numerical finite-difference gradient checking.',
-    publicHeaders: [],
-    sourceFiles: [],
-    unitTestSuite: 'Scheduled for Phase 2'
-  },
-  {
-    id: 'neural_core',
-    name: 'Neural Network Core (Modules & Layers)',
-    directory: 'DPNF/NeuralCore',
-    phase: 3,
-    phaseTitle: 'Phase 3: Neural Network Core',
-    status: 'Planned',
-    category: 'Autodiff & Neural',
-    responsibility: 'Composable Module hierarchy, Parameter/Buffer registration, Linear, Conv2D/3D, Depthwise/Transposed Conv, LayerNorm, GroupNorm, ResidualBlock, and AttentionBlock.',
-    publicHeaders: [],
-    sourceFiles: [],
-    unitTestSuite: 'Scheduled for Phase 3'
-  },
-  {
-    id: 'training',
-    name: 'Training Engine, Optimizers & Losses',
-    directory: 'DPNF/Training, DPNF/Optimizers, DPNF/Losses',
-    phase: 4,
-    phaseTitle: 'Phase 4: Training System',
-    status: 'Planned',
-    category: 'Autodiff & Neural',
-    responsibility: 'Trainer loop, SGD/Adam/AdamW/RMSprop optimizers, L1/L2/SSIM/edge/temporal losses, deterministic seeding, and atomic checkpoint recovery.',
-    publicHeaders: [],
-    sourceFiles: [],
-    unitTestSuite: 'Scheduled for Phase 4'
-  },
-  {
-    id: 'vulkan_compute',
-    name: 'Headless Vulkan Compute Backend & GPU Kernels',
-    directory: 'DPNF/GPU/Vulkan',
-    phase: 5,
-    phaseTitle: 'Phase 5 & 6: Vulkan Compute & GPU Tensor Operations',
-    status: 'Planned',
-    category: 'Compute & Memory',
-    responsibility: 'Headless VkInstance, physical device discovery, compute queues, SPIR-V shader pipelines, descriptor sets, and validated GPU tensor kernels.',
-    publicHeaders: [],
-    sourceFiles: [],
-    unitTestSuite: 'Scheduled for Phases 5 & 6'
-  },
-  {
-    id: 'neural_graphics',
-    name: 'Neural Graphics, Super Resolution & Temporal Reconstruction',
-    directory: 'DPNF/NeuralGraphics, DPNF/SuperResolution, DPNF/Temporal, DPNF/Denoising',
-    phase: 7,
-    phaseTitle: 'Phases 7–9: Neural Graphics, Super Resolution & Temporal',
-    status: 'Planned',
-    category: 'Neural Graphics',
-    responsibility: 'NeuralGraphicsFrame (color, albedo, normal, depth, motion vectors, exposure, jitter), multi-scale upsampling, motion-vector warping, history rejection, and PSNR/SSIM evaluation.',
-    publicHeaders: [],
-    sourceFiles: [],
-    unitTestSuite: 'Scheduled for Phases 7–9'
-  },
-  {
-    id: 'runtime',
-    name: 'Real-Time C++ Inference Runtime & .dpnf Serialization',
-    directory: 'DPNF/Runtime, DPNF/Serialization, DPNF/Compiler',
-    phase: 10,
-    phaseTitle: 'Phases 10–11: Real-Time Rendering Runtime & Advanced Tools',
-    status: 'Planned',
-    category: 'Runtime & Tools',
-    responsibility: 'Standalone C++ InferenceSession for DP Engine integration without Python runtime dependency, .dpnf binary model serialization, and graph optimization.',
-    publicHeaders: [],
-    sourceFiles: [],
-    unitTestSuite: 'Scheduled for Phases 10–11'
+    unitTestSuite: 'DPNF_FullFramework_UnitTests (11 test suites)'
   }
 ];
 
