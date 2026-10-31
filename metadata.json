@@ -1,0 +1,6 @@
+{
+  "name": "DP Neural Framework (DPNF) — Phase 0 Engineering Console",
+  "description": "Phase 0 project foundation, hardware capability inspector, C++20 build & GoogleTest verification runner, and modular architecture explorer for the DP Neural Framework (DPNF).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
